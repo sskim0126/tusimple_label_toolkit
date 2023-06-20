@@ -137,6 +137,24 @@ class TuSimpleLabeler:
                     COLORS[lane_idx % len(COLORS)],
                     thickness=2,
                 )
+
+        tmp_circles = self.circles.get(self.lane_idx, [])
+        if len(tmp_circles) >= 2:
+            # 기울기와 y 절편 계산
+            start_point = tmp_circles[-2]
+            end_point = tmp_circles[-1]
+
+            slope = (end_point[1] - start_point[1]) / (end_point[0] - start_point[0])
+            intercept = start_point[1] - slope * start_point[0]
+
+            # 직선 그리기
+            x1 = 0
+            y1 = int(slope * x1 + intercept)
+
+            x2 = self.width - 1
+            y2 = int(slope * x2 + intercept)
+
+            cv2.line(image_copy, (x1, y1), (x2, y2), (255, 255, 255), 1)
         cv2.circle(
             image_copy,
             (self.x, self.y),
@@ -203,7 +221,7 @@ class TuSimpleLabeler:
 
         while True:
             key = cv2.waitKeyEx()
-            if key == 127:  # delete key
+            if key == 127 or key == 8:  # delete key
                 self.cancel_last_circle()
             elif key == 13:  # Enter key
                 self.save_circles()
@@ -212,11 +230,11 @@ class TuSimpleLabeler:
                 with open(os.path.join(self.image_path, '.cache'), 'w') as f:
                     f.write(str(self.current_image_index))
                 break
-            elif key == 63235:  # right button
+            elif key == 63235 or key == 2555904:  # right button
                 self.save_circles()
                 if not self.show_next_image(is_next=True):
                     break
-            elif key == 63234:  # left button
+            elif key == 63234 or key == 2424832:  # left button
                 self.save_circles()
                 self.show_next_image(is_next=False)
             elif key in [122, 90, 12619]:  # z
