@@ -144,17 +144,18 @@ class TuSimpleLabeler:
             start_point = tmp_circles[-2]
             end_point = tmp_circles[-1]
 
-            slope = (end_point[1] - start_point[1]) / (end_point[0] - start_point[0])
-            intercept = start_point[1] - slope * start_point[0]
+            if end_point[0] != start_point[0]
+                slope = (end_point[1] - start_point[1]) / (end_point[0] - start_point[0])
+                intercept = start_point[1] - slope * start_point[0]
 
-            # 직선 그리기
-            x1 = 0
-            y1 = int(slope * x1 + intercept)
+                # 직선 그리기
+                x1 = 0
+                y1 = int(slope * x1 + intercept)
 
-            x2 = self.width - 1
-            y2 = int(slope * x2 + intercept)
+                x2 = self.width - 1
+                y2 = int(slope * x2 + intercept)
 
-            cv2.line(image_copy, (x1, y1), (x2, y2), (255, 255, 255), 1)
+                cv2.line(image_copy, (x1, y1), (x2, y2), (255, 255, 255), 1)
         cv2.circle(
             image_copy,
             (self.x, self.y),
