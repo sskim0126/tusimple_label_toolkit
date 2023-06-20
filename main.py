@@ -144,7 +144,7 @@ class TuSimpleLabeler:
             start_point = tmp_circles[-2]
             end_point = tmp_circles[-1]
 
-            if end_point[0] != start_point[0]
+            if end_point[0] != start_point[0]:
                 slope = (end_point[1] - start_point[1]) / (end_point[0] - start_point[0])
                 intercept = start_point[1] - slope * start_point[0]
 
