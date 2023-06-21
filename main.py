@@ -5,13 +5,7 @@ import argparse
 
 COLORS = [
     (0, 255, 0),
-    (255, 0, 0),
-    (255, 255, 0),
-    (255, 0, 255),
-    (147, 20, 255),
-    (42, 42, 165),
-    (128, 128, 128),
-    (128, 0, 96),
+    (255, 0, 0)
 ]
 
 
@@ -42,12 +36,14 @@ class TuSimpleLabeler:
         self.circle_radius = 7
 
         self.lane_idx = 0
-        self.max_lane_idx = 0
-        self.circles = {self.lane_idx: []}
+        self.max_lane_idx = len(COLORS) - 1
+        self.circles = {key: [] for key in range(self.max_lane_idx + 1)}
         self.lines = [
             ((0, y), (self.width - 1, y))
             for y in range(self.start_y, self.end_y, self.step)
         ]
+        self.straight_mode = True
+
         self.window_name = "Circle Drawer"
         self.legend = cv2.imread("legend.png")
         self.legend_height, self.legend_width, _ = self.legend.shape
@@ -57,7 +53,7 @@ class TuSimpleLabeler:
     def get_image_files(self):
         # 이미지 파일 목록 가져오기
         image_files = []
-        for file in os.listdir(self.image_path):
+        for file in sorted(os.listdir(self.image_path)):
             if file.endswith(".jpg") or file.endswith(".png"):
                 image_files.append(file)
 
@@ -90,29 +86,37 @@ class TuSimpleLabeler:
         self.image[
             10 : 10 + self.legend_height :, -10 - self.legend_width : -10
         ] = self.legend
-        cv2.putText(self.image, f"{self.current_image_index + 1} / {self.n_images}", (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+        cv2.putText(self.image, f"{self.current_image_index + 1} / {self.n_images}, straight mode: {self.straight_mode}", (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
         cv2.imshow(self.window_name, self.image)
 
         if not file_name in self.labels.keys():
             self.labels[file_name] = []
             self.lane_idx = 0
-            self.max_lane_idx = 0
-            self.circles = {self.lane_idx: []}
+            self.circles = {key: [] for key in range(self.max_lane_idx + 1)}
         else:
-            self.lane_idx = len(self.labels[file_name])
-            self.max_lane_idx = max(self.max_lane_idx, self.lane_idx)
-            self.circles = {}
+            self.lane_idx = len(self.labels[file_name]) - 1
+            self.circles = {key: [] for key in range(self.max_lane_idx + 1)}
             for i, lane in enumerate(self.labels[file_name]):
                 self.circles[i] = [
-                    (x, y) for x, y in zip(lane, self.h_samples) if x > 0
+                    (x, y) for x, y in zip(reversed(lane), reversed(self.h_samples)) if x > 0
                 ]
-            self.circles[self.lane_idx] = []
 
         return True
 
     def mouse_callback(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
             self.circles[self.lane_idx].append((self.x, self.y))
+            if self.straight_mode and len(self.circles[self.lane_idx]) >= 2:
+                last = self.circles[self.lane_idx][-2]
+                gap = abs(last[1] - self.y)
+                if gap > self.step:
+                    slope = (last[0] - self.x) / (last[1] - self.y)
+                    if last[1] > self.y:
+                        for i, middel_y in enumerate(range(self.y + self.step, last[1], self.step), 1):
+                            self.circles[self.lane_idx].append((round(self.x + slope * i * self.step), middel_y))
+                    else:
+                        for i, middel_y in enumerate(range(last[1] + self.step, self.y, self.step), 1):
+                            self.circles[self.lane_idx].append((round(last[0] + slope * i * self.step), middel_y))
             self.draw_lines_circles()
         elif event == cv2.EVENT_MOUSEMOVE:
             self.x = x
@@ -178,8 +182,6 @@ class TuSimpleLabeler:
 
         labels = []
         for i, circles in self.circles.items():
-            if not circles:
-                continue
             tmp_labels = [-2] * ((self.end_y - self.start_y) // self.step)
             for x, y in circles:
                 tmp_labels[(y - self.start_y) // self.step] = x
@@ -206,8 +208,7 @@ class TuSimpleLabeler:
 
         self.labels[file_name] = labels
 
-        self.lane_idx += 1
-        self.max_lane_idx = max(self.max_lane_idx, self.lane_idx)
+        self.change_lane(is_next=True)
         self.circles[self.lane_idx] = self.circles.get(self.lane_idx, [])
 
     def change_lane(self, is_next):
@@ -242,6 +243,19 @@ class TuSimpleLabeler:
                 self.change_lane(is_next=False)
             elif key in [120, 88, 12620]:  # x
                 self.change_lane(is_next=True)
+            elif key in [115, 83, 12596]:  # s
+                self.straight_mode = not self.straight_mode
+                file_name = self.image_files[self.current_image_index]
+
+                self.image = cv2.imread(os.path.join(self.image_path, file_name))
+                self.image[
+                    10 : 10 + self.legend_height :, -10 - self.legend_width : -10
+                ] = self.legend
+                cv2.putText(self.image, f"{self.current_image_index + 1} / {self.n_images}, straight mode: {self.straight_mode}", (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+                cv2.imshow(self.window_name, self.image)
+            elif key in [113, 81, 12610]: # q
+                self.circles[self.lane_idx] = []
+
             self.draw_lines_circles()
 
         cv2.destroyAllWindows()
