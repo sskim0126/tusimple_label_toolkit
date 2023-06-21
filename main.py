@@ -216,6 +216,12 @@ class TuSimpleLabeler:
             self.lane_idx = min(self.lane_idx + 1, self.max_lane_idx)
         else:
             self.lane_idx = max(self.lane_idx - 1, 0)
+    
+    # lane이 2개일때만 작동
+    # 수정해야함
+    def swap_lane(self):
+        self.circles[0], self.circles[1] = self.circles[1], self.circles[0]
+        self.lane_idx = 1 - self.lane_idx
 
     def run(self):
         self.show_next_image(is_next=True)
@@ -255,6 +261,8 @@ class TuSimpleLabeler:
                 cv2.imshow(self.window_name, self.image)
             elif key in [113, 81, 12610]: # q
                 self.circles[self.lane_idx] = []
+            elif key in [114, 82, 12593]: # r
+                self.swap_lane()
 
             self.draw_lines_circles()
 
